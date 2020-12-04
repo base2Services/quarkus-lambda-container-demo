@@ -12,11 +12,6 @@ Resources:
     Properties:
       PackageType: Image
       ImageUri: !Ref ImageUri
-      ImageConfig: 
-        EntryPoint: 
-          - "/lambda-entrypoint.sh"
-        Command: 
-          - io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       MemorySize: 256
       Timeout: 15
       Policies: AWSLambdaBasicExecutionRole
