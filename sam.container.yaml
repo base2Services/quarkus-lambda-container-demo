@@ -10,8 +10,13 @@ Resources:
   QuarkusLambdaDemo:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: QuarkusLambdaDemo
       PackageType: Image
       ImageUri: !Ref ImageUri
       MemorySize: 256
       Timeout: 15
       Policies: AWSLambdaBasicExecutionRole
+
+Outputs:
+  Function:
+    Value: !Ref QuarkusLambdaDemo

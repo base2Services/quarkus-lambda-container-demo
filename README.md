@@ -74,34 +74,28 @@ quarkus.lambda.handler=test
 
 ## Building the Dockerfile
 
-Create a Dockerfile in the quarkus-lambda-demo using the `public.ecr.aws/lambda/java:8.al2` lambda java8 Amazon Linux 2 runtime container as the base
+Create a Dockerfile in the quarkus-lambda-container-demo using the `public.ecr.aws/lambda/java:8.al2` lambda java8 Amazon Linux 2 runtime container as the base
 
 ```Dockerfile
 # (1)
 FROM  public.ecr.aws/lambda/java:8.al2
 
+ARG APP_NAME=quarkus-lambda-demo
+ARG APP_VERSION=1.0-SNAPSHOT
 
-WORKDIR /function
+# (2) Copies artifacts into /function directory
+ADD ${APP_NAME}/target/${APP_NAME}-${APP_VERSION}-runner.jar /var/task/lib/${APP_NAME}.jar
+ADD ${APP_NAME}/target/lib/  /var/task/lib/
 
-#2 Install lambda runtime emulator - used for testing locally in docker
-# See https://github.com/aws/aws-lambda-runtime-interface-emulator/
-RUN yum install -y unzip && \
-  curl -Lo /aws-lambda-rie https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie && \
-  chmod +x /aws-lambda-rie
-
-#3 Copies artifacts into /function directory
-ADD target/quarkus-lambda-demo-1.0-SNAPSHOT-runner.jar /function/quarkus-lambda-demo.jar
-ADD target/classes/application.properties /function/application.properties 
-ADD target/lib/ /function/
-
-#4 lambda runtime entrypoint for testing
-ENTRYPOINT [ "/aws-lambda-rie" ]
-
-#5 wrap the execution of the quarkus lambda runtime in the AWS lambda runtime
-CMD ["/var/lang/bin/java", "-cp", "./*", "com.amazonaws.services.lambda.runtime.api.client.AWSLambda", "io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest", "quarkus.lambda.handler=test"]
+# (3) Setting the command to the Quarkus lambda handler
+CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
 
 ```
 1) Details about the lambda containers images can be found at https://docs.aws.amazon.com/lambda/latest/dg/images-create.html
+
+2) Copies the runner and it's dependencies into the default WORKDIR which is /var/task
+
+3) Overrides the CMD using the default Quarkus lambda handler
 
 ### Then build the docker image
 
@@ -119,7 +113,8 @@ You can now use this image to test the lambda execution locally using
 ```bash
 $ docker run --rm -it -p 9000:8080 quarkus/lambda-demo:latest
 ....
-INFO[0000] exec '/var/lang/bin/java' (cwd=/function, handler=io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest) 
+INFO[0000] exec '/var/runtime/bootstrap' (cwd=/var/task, handler=)
+....
 ```
 
 This starts the AWS lambda runtime emulator and a web server listen locally on port 9000. You can test the test lambda handler using curl
@@ -170,10 +165,66 @@ The push refers to repository [<aws-accountid>.dkr.ecr.eu-central-1.amazonaws.co
 
 ### Create the Lambda function
 
+Create a SAM template to deploy the function
+
+**sam.container.yaml**
+
+```yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS Serverless Quarkus - quarkus-lambda-demo-1.0-SNAPSHOT
+
+Parameters:
+  ImageUri:
+    Type: String
+
+Resources:
+  QuarkusLambdaDemo:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: !Ref ImageUri
+      MemorySize: 256
+      Timeout: 15
+      Policies: AWSLambdaBasicExecutionRole
+
+Outputs:
+  Function:
+    Value: !Ref QuarkusLambdaDemo
+```
+
+Now deploy the template
+
 ```bash 
+AWS_REGION=eu-central-1
+AWS_ACCOUNT_ID=xxxxxx
 $ aws cloudformation deploy \
   --stack-name quarkus-lambda-demo \
   --template-file sam.container.yaml \
-  --parameter-overrides ImageUri=<aws-accountid>.dkr.ecr.eu-central-1.amazonaws.com/quarkus/lambda-demo:latest \
-  --capabilities CAPABILITY_IAM
+  --parameter-overrides ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/quarkus/lambda-demo:latest \
+  --capabilities CAPABILITY_IAM \
+  --region ${AWS_REGION}
 ```
+
+Now invoke the function
+
+```bash
+$ aws lambda invoke \
+    --cli-binary-format raw-in-base64-out \
+    --function-name QuarkusLambdaDemo \
+    --payload '{"greeting":"herzlich willkommen", "name":"aaron"}' \
+    --region ${AWS_REGION}
+    out.json
+
+{
+    "StatusCode": 200,
+    "ExecutedVersion": "$LATEST"
+}
+
+$ cat out.json
+{"result":"herzlich willkommen aaron","requestId":"02d6569d-0452-4ed7-bdbe-7e860a8592d8"}
+```
+
+## Summary
+
+Without much modification it was possible to create a simple Quarkus Lambda App and package it as a container image. Quarkus gives you the ability to run the app locally but by running in the container gives you the same environment that the app will run in when deployed to Lambda. Another big advantage of using a container is that you aren't restricted by the lambda zip file size limit. 
