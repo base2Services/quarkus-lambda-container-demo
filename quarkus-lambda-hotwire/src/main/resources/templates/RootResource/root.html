@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://unpkg.com/@hotwired/turbo@7.0.0-beta.1/dist/turbo.es5-umd.js"></script>
+    <script>
+        window.onload = function () {
+            Turbo.connectStreamSource(new EventSource("/stream/counter?name={name}"));
+        }
+    </script>
+    <meta charset="UTF-8">
+    <title>Hotwired Lambda</title>
+</head>
+
+<body>
+    <h1 id="title">Hotwired Lambda</h1>
+
+    <div id="stream"></div>
+
+</body>
+
+</html>

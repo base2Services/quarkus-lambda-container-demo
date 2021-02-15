@@ -1,5 +1,5 @@
 # (1)
-FROM  public.ecr.aws/lambda/java:8.al2
+FROM  public.ecr.aws/lambda/java:11
 
 ARG APP_NAME=quarkus-lambda-demo
 ARG APP_VERSION=1.0-SNAPSHOT

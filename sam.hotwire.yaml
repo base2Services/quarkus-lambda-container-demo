@@ -1,0 +1,36 @@
+  AWSTemplateFormatVersion: '2010-09-09'
+  Transform: AWS::Serverless-2016-10-31
+  Description: AWS Serverless Quarkus HTTP - quarkus-lambda-hotwire-1.0.0-SNAPSHOT
+  Globals:
+    Api:
+      EndpointConfiguration: REGIONAL
+      BinaryMediaTypes:
+        - "*/*"
+
+  Parameters:
+    ImageUri:
+      Type: String
+
+  Resources:
+    QuarkusLambdaHotwire:
+      Type: AWS::Serverless::Function
+      Properties:
+        FunctionName: QuarkusLambdaHotwire
+        PackageType: Image
+        ImageUri: !Ref ImageUri
+        MemorySize: 512
+        Policies: AWSLambdaBasicExecutionRole
+        Timeout: 15
+        Events:
+          GetResource:
+            Type: Api
+            Properties:
+              Path: /{proxy+}
+              Method: any
+
+  Outputs:
+    QuarkusLambdaHotwireApi:
+      Description: URL for application
+      Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/'
+      Export:
+        Name: QuarkusLambdaHotwireApi
