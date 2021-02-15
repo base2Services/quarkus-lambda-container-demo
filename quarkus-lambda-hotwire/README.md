@@ -4,6 +4,9 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
 
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/base2services/quarkus-lambda-container-demo)
+
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
